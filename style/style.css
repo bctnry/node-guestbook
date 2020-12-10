@@ -1,0 +1,19 @@
+body {
+    background-color: black;
+    color: white;
+    width: 80%;
+    margin: 0 auto;
+    margin-top: 3em;
+}
+
+a {
+    color: white;
+}
+
+
+.comment-form {
+    margin-top: 3em;
+}
+.comment-form input[type="text"] {
+    font-size: 1em;
+}
