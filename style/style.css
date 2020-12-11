@@ -4,6 +4,7 @@ body {
     width: 80%;
     margin: 0 auto;
     margin-top: 3em;
+    font-family: serif;
 }
 
 a {
@@ -16,4 +17,30 @@ a {
 }
 .comment-form input[type="text"] {
     font-size: 1em;
+    border: 0;
+    margin: 0;
+    background-color: black;
+    color: white;
+    border-bottom: 1px white solid;
+    width: 100%;
+    margin-top: 1em;
+}
+.comment-form textarea {
+    font-size: 1em;
+    border: 0;
+    margin: 0;
+    background-color: black;
+    color: white;
+    border-bottom: 1px white solid;
+    width: 100%;
+    margin-top: 1em;
+}
+.comment-form input[type="submit"] {
+    font-size: 1em;
+    margin: 0;
+    background-color: black;
+    color: white;
+    border: 1px white solid;
+    width: 100%;
+    margin-top: 1em;
 }

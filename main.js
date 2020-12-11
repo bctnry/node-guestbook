@@ -25,6 +25,14 @@ const parseForm = (formString) => {
     return res;
 }
 
+const _reg = (n, str) => {
+    return `${'0'.repeat(n-str.length)}${str}`;
+}
+const getCurrentDaystring = () => {
+    let date = new Date(Date.now());
+    return `${date.getFullYear()}${date.getMonth()+1}${date.getDate()}${_reg(2,date.getHours())}${_reg(2,date.getMinutes())}${_reg(2,date.getSeconds())}}`;
+}
+
 
 // db
 let db = JSON.parse(fs.readFileSync(path.join('db', 'db.txt'), {encoding:'utf-8'}));
@@ -75,9 +83,9 @@ function _CommentForm() {
     return `
 <div class="comment-form">
 <form method="POST" action="">
-Name: <input type="text" name="name" id="comment-name"> <br />
-Email: <input type="text" name="email" id="comment-name"> <br />
-Homepage: <input type="text" name="url" id="comment-name"> <br />
+Name: <br /><input type="text" name="name" id="comment-name"> <br />
+Email: <br /><input type="text" name="email" id="comment-name"> <br />
+Homepage: <br /><input type="text" name="url" id="comment-name"> <br />
 Comment:<br />
 <textarea name="content"></textarea><br />
 <input type="submit" value="Comment">
@@ -128,9 +136,10 @@ const server = http.createServer((req, res) => {
             form.ip = req.socket.remoteAddress;
             form.id = db.id++;
             let d = new Date(Date.now());
-            form.date = `${d.getFullYear()}${d.getMonth()}`
+            form.date = getCurrentDaystring();
             db.comment.push(form);
             res.end(_Page(db.comment));
+            _flushdb();
         });
     } else if (req.method === 'GET') {
         res.statusCode = 200;
