@@ -5,7 +5,8 @@ const path = require('path');
 const title = 'Guestbook';
 const port = 9981;
 const rateLimitDurationMS = 1000 * 60 * 60;
-const maxCount = 20;
+const maxCount = 10;
+const pageSize = 10;
 
 // aux funcs.
 const log = (str) => {
@@ -25,12 +26,32 @@ const parseForm = (formString) => {
     return res;
 }
 
+const parseArgs = (urlString) => {
+    let x = urlString.split('?');
+    if (x.length <= 1) { return {root: x}; }
+    let args = {};
+    x[1].split('&').forEach((v) => {
+        let z = v.split('=');
+        if (z.length <= 1) { args[z[0]] = true; }
+        else {
+            let data = z[1].replace(/%(..)/g, (v) => String.fromCharCode(parseInt(v.substring(1), 16)));
+            args[z[0]] = data;
+        }
+    });
+    return {
+        root: x[0],
+        args
+    };
+}
+
+const _deEscape = (x) => x.replace(/\\(.)/g, '$1');
+
 const _reg = (n, str) => {
     return `${'0'.repeat(n-str.length)}${str}`;
 }
 const getCurrentDaystring = () => {
     let date = new Date(Date.now());
-    return `${date.getFullYear()}${date.getMonth()+1}${date.getDate()}${_reg(2,date.getHours())}${_reg(2,date.getMinutes())}${_reg(2,date.getSeconds())}}`;
+    return `${date.getFullYear()}${date.getMonth()+1}${date.getDate()}${_reg(2,date.getHours())}${_reg(2,date.getMinutes())}${_reg(2,date.getSeconds())}`;
 }
 
 
@@ -42,6 +63,35 @@ function _flushdb() {
 
 // css
 let css = fs.readFileSync(path.join('style', 'style.css'));
+
+// markup
+function _Markup(source) {
+    source = (source
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\*((?:\\\*|\\\\|[^* ])+)\*/g, (_, p1) => `<b>${_deEscape(p1)}</b>`)
+        .replace(/\/((?:\\\/|\\\\|[^/ ])+)\//g, (_, p1) => `<i>${_deEscape(p1)}</i>`)
+        .replace(/`((?:\\\`|\\\\|[^` ])+)`/g, (_, p1) => `<code>${_deEscape(p1)}</code>`)
+        .replace(/\[((?:\\\[|\\\]|[^\[\] ])*)\]\(((?:\\\(|\\\)|[^()])*)*\)/g, (_, p1, p2) => `<a href="${_deEscape(p1)}">${_deEscape(p2)}</a>`)
+    );
+
+    let res = ['<p>'];
+    let pStarted = true;
+    source.split('\n').forEach((v) => {
+        if (!v.trim() && pStarted) {
+            pStarted = false;
+            res.push('</p>');
+            return;
+        }
+        if (!pStarted && v.trim()) {
+            pStarted = true;
+            res.push('<p>');
+            res.push(v);
+            return;
+        }
+        res.push(v);
+    });
+    return res.join('');
+}
 
 // renderer
 function _Date(datestring) {
@@ -55,13 +105,13 @@ function _Comment(comment) {
 <div class="comment">
 <div class="comment-header">#${comment.id} <b>${comment.name}@${comment.ip}</b> &lt;${emailString}&gt; {${urlString}} @ ${_Date(comment.date)}</div>
 <div class="comment-content">
-${comment.content}
+${_Markup(comment.content)}
 </div>
 </div>
 `
 }
 
-function _Page(commentList) {
+function _Page(commentList, pageNum) {
     return `
 <html>
 <head>
@@ -74,8 +124,31 @@ function _Page(commentList) {
 <div class="comment-list">
 ${commentList.map((v) => _Comment(v)).join('<hr />')}
 </div>
+${_PageSelector(pageNum)}
 ${_CommentForm()}
 </body>
+`;
+}
+
+function _PageSelector(pageNum) {
+    let totalPageCount = Math.ceil(db.comment.length / pageSize);
+    let prevPage = `<a href="?page=${pageNum-1}">&lt;</a>`;
+    let noPrevPage = `<span style="color:gray">&lt;</span>`
+    let nextPage = `<a href="?page=${pageNum+1}">&gt;</a>`;
+    let noNextPage = `<span style="color:gray">&gt;</span>`
+    let prevLink_ = [];
+    for (let i = 1; i < pageNum; i++) {
+        prevLink_.push(`<a href="?page=${i}">${i}</a>`);
+    }
+    let nextLink_ = [];
+    for (let i = pageNum+1; i <= totalPageCount; i++) {
+        nextLink_.push(`<a href="?page=${i}">${i}</a>`);
+    }
+    let center = `${prevLink_.join(' ')}${pageNum}${nextLink_.join(' ')}`;
+    return `
+<div class="page-selector">
+${pageNum-1<1?noPrevPage:prevPage} ${center} ${pageNum+1>totalPageCount?noNextPage:nextPage}
+</div>
 `;
 }
 
@@ -87,7 +160,7 @@ Name: <br /><input type="text" name="name" id="comment-name"> <br />
 Email: <br /><input type="text" name="email" id="comment-name"> <br />
 Homepage: <br /><input type="text" name="url" id="comment-name"> <br />
 Comment:<br />
-<textarea name="content"></textarea><br />
+<textarea name="content""></textarea><br />
 <input type="submit" value="Comment">
 </form>
 </div>
@@ -138,12 +211,16 @@ const server = http.createServer((req, res) => {
             let d = new Date(Date.now());
             form.date = getCurrentDaystring();
             db.comment.push(form);
-            res.end(_Page(db.comment));
+            let x = parseArgs(req.url);
+            let page = parseInt((x.args && x.args.page) || '1', 10);
+            res.end(_Page(db.comment.sort((a, b) => b.id - a.id).slice((page-1)*pageSize, page*pageSize), page));
             _flushdb();
         });
     } else if (req.method === 'GET') {
+        let x = parseArgs(req.url);
+        let page = parseInt((x.args && x.args.page) || '1', 10);
         res.statusCode = 200;
-        res.end(_Page(db.comment));
+        res.end(_Page(db.comment.sort((a, b) => b.id - a.id).slice((page-1)*pageSize, page*pageSize), page));
     } else {
         res.statusCode = 400;
         res.end('Method not allowed');

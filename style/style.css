@@ -11,6 +11,9 @@ a {
     color: white;
 }
 
+code {
+    font-family: monospace;
+}
 
 .comment-form {
     margin-top: 3em;
@@ -23,7 +26,8 @@ a {
     color: white;
     border-bottom: 1px white solid;
     width: 100%;
-    margin-top: 1em;
+    margin-top: 0.5em;
+    margin-bottom: 1em;
 }
 .comment-form textarea {
     font-size: 1em;
@@ -33,7 +37,8 @@ a {
     color: white;
     border-bottom: 1px white solid;
     width: 100%;
-    margin-top: 1em;
+    margin-top: 0.5em;
+    margin-bottom: 1em;
 }
 .comment-form input[type="submit"] {
     font-size: 1em;
@@ -42,5 +47,13 @@ a {
     color: white;
     border: 1px white solid;
     width: 100%;
-    margin-top: 1em;
+    margin-top: 0.5em;
+    margin-bottom: 1em;
+    font-family: serif;
+}
+
+.page-selector {
+    margin-top: 0.5em;
+    text-align: center;
+    margin-bottom: 0.5em;
 }
